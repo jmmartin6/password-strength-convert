@@ -1,0 +1,8 @@
+[package]
+name = "pwconv"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "pwconv"
+path = "src/main.rs"
