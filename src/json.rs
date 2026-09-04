@@ -175,3 +175,74 @@ pub fn parse(input: &str) -> Result<Vec<Record>, String> {
     }
     Ok(records)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_empty_array() {
+        let records = parse("[]").unwrap();
+        assert!(records.is_empty());
+    }
+
+    #[test]
+    fn parses_basic_object() {
+        let input = r#"[{"label": "alice", "score": 2, "entropy_bits": 34.50, "crack_time": "3 hours"}]"#;
+        let records = parse(input).unwrap();
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].label, "alice");
+        assert_eq!(records[0].score, 2);
+        assert_eq!(records[0].entropy_bits, 34.50);
+        assert_eq!(records[0].crack_time, "3 hours");
+    }
+
+    #[test]
+    fn round_trip() {
+        let records = vec![
+            Record::new("alice".to_string(), 2, 34.56, "3 hours".to_string()).unwrap(),
+            Record::new("bob \"the\" builder".to_string(), 4, 78.23, "centuries".to_string()).unwrap(),
+            Record::new("carol\\zero".to_string(), 0, 8.10, "line1\nline2".to_string()).unwrap(),
+        ];
+        let text = write(&records);
+        let parsed = parse(&text).unwrap();
+        assert_eq!(records, parsed);
+    }
+
+    #[test]
+    fn escapes_special_characters_in_write() {
+        let records = vec![
+            Record::new("line\nbreak".to_string(), 1, 10.0, "tab\there".to_string()).unwrap(),
+        ];
+        let text = write(&records);
+        assert!(text.contains("line\\nbreak"));
+        assert!(text.contains("tab\\there"));
+    }
+
+    #[test]
+    fn rejects_missing_field() {
+        let input = r#"[{"label": "alice", "score": 2, "entropy_bits": 34.50}]"#;
+        let err = parse(input).unwrap_err();
+        assert!(err.contains("missing"));
+    }
+
+    #[test]
+    fn rejects_unknown_field() {
+        let input = r#"[{"label": "alice", "score": 2, "entropy_bits": 34.50, "crack_time": "3 hours", "extra": 1}]"#;
+        let err = parse(input).unwrap_err();
+        assert!(err.contains("unknown field"));
+    }
+
+    #[test]
+    fn rejects_score_out_of_range() {
+        let input = r#"[{"label": "alice", "score": 9, "entropy_bits": 34.50, "crack_time": "3 hours"}]"#;
+        let err = parse(input).unwrap_err();
+        assert!(err.contains("out of range"));
+    }
+
+    #[test]
+    fn rejects_malformed_input() {
+        let err = parse(r#"[{"label": "alice""#).unwrap_err();
+        assert!(!err.is_empty());
+    }
+}

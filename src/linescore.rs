@@ -99,3 +99,70 @@ fn split_unescaped(line: &str) -> Vec<String> {
     fields.push(current);
     fields
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_basic_line() {
+        let records = parse("alice|2|34.50|3 hours\n").unwrap();
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].label, "alice");
+        assert_eq!(records[0].score, 2);
+        assert_eq!(records[0].entropy_bits, 34.50);
+        assert_eq!(records[0].crack_time, "3 hours");
+    }
+
+    #[test]
+    fn skips_blank_lines() {
+        let input = "alice|2|34.50|3 hours\n\nbob|4|78.20|centuries\n";
+        let records = parse(input).unwrap();
+        assert_eq!(records.len(), 2);
+    }
+
+    #[test]
+    fn round_trip() {
+        let records = vec![
+            Record::new("alice".to_string(), 2, 34.56, "3 hours".to_string()).unwrap(),
+            Record::new("bob|weird\\name".to_string(), 4, 78.23, "centuries".to_string()).unwrap(),
+            Record::new("carol".to_string(), 0, 8.10, "line1\nline2".to_string()).unwrap(),
+        ];
+        let text = write(&records);
+        let parsed = parse(&text).unwrap();
+        assert_eq!(records, parsed);
+    }
+
+    #[test]
+    fn rejects_wrong_field_count() {
+        let err = parse("alice|2|34.50\n").unwrap_err();
+        assert!(err.contains("expected 4 fields"));
+    }
+
+    #[test]
+    fn rejects_invalid_score() {
+        let err = parse("alice|nine|34.50|3 hours\n").unwrap_err();
+        assert!(err.contains("invalid score"));
+    }
+
+    #[test]
+    fn rejects_invalid_entropy() {
+        let err = parse("alice|2|not-a-number|3 hours\n").unwrap_err();
+        assert!(err.contains("invalid entropy"));
+    }
+
+    #[test]
+    fn rejects_score_out_of_range() {
+        let err = parse("alice|5|34.50|3 hours\n").unwrap_err();
+        assert!(err.contains("out of range"));
+    }
+
+    #[test]
+    fn escapes_pipe_and_backslash_in_write() {
+        let records = vec![
+            Record::new("a|b\\c".to_string(), 1, 10.0, "d|e".to_string()).unwrap(),
+        ];
+        let text = write(&records);
+        assert_eq!(text, "a\\|b\\\\c|1|10.00|d\\|e\n");
+    }
+}
