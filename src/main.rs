@@ -36,6 +36,7 @@ fn run() -> Result<(), String> {
         "json" => json::parse(&input)?,
         other => return Err(format!("unknown input format '{}'\n{}", other, usage())),
     };
+    record::check_unique_labels(&records)?;
 
     let output = match to {
         "linescore" => linescore::write(&records),

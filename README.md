@@ -37,7 +37,9 @@ A literal `\` or `|` inside a field is backslash-escaped.
 ]
 ```
 
-`score` must be an integer from 0 to 4 in either format.
+`score` must be an integer from 0 to 4, and `entropy_bits` must be a finite
+number from 0 to 1024, in either format. A batch may not contain the same
+`label` twice.
 
 ## Usage
 
@@ -70,5 +72,6 @@ cargo build --release
 
 ## Status
 
-First pass. Handles the two formats above and validates the score range;
-does not yet validate `entropy_bits` for sanity or reject duplicate labels.
+Handles the two formats above and validates score range, entropy range, and
+duplicate labels within a batch. No csv format, no compressed input, and no
+control over JSON output layout yet.
